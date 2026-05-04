@@ -87,9 +87,10 @@ function NavBar({ page, setPage }) {
   const [open, setOpen] = useState(false);
   const nav = [
     { id:"home", label:"Accueil" },
-    { id:"stock", label:"Nos Véhicules" },
-    { id:"rachat", label:"Rachat / Dépôt-Vente" },
+    { id:"stock", label:"Véhicules" },
+    { id:"rachat", label:"Rachat / Dépôt" },
     { id:"location", label:"Location" },
+    { id:"cartegrise", label:"Carte Grise" },
     { id:"contact", label:"Contact" },
   ];
   return (
@@ -204,6 +205,7 @@ function HomePage({ setPage, setSelectedVehicle }) {
               { icon:"🏅", titre:"Dépôt-Vente 490€", desc:"Nettoyage, annonce pro, gestion des appels et visites, papiers de cession inclus. Tranquillité totale.", cta:"En savoir plus", page:"rachat" },
               { icon:"🚗", titre:"Vente", desc:"Sélection de véhicules d'occasion contrôlés. Des modèles premium à des prix justes à Porto-Vecchio.", cta:"Voir le stock", page:"stock" },
               { icon:"🌴", titre:"Location Estivale", desc:"Profitez de la Corse au volant d'un véhicule de qualité. Location à la journée ou à la semaine.", cta:"Réserver", page:"location" },
+              { icon:"📄", titre:"Carte Grise 49€", desc:"Service en ligne, partout en France. Habilités SIV, nous traitons toutes vos démarches d'immatriculation.", cta:"Démarrer ma demande", page:"cartegrise" },
             ].map((s,i) => (
               <div key={i} style={{ background:C.card, borderRadius:18, padding:28, border:`1px solid ${C.border}`, display:"flex", flexDirection:"column", gap:14 }}>
                 <div style={{ fontSize:36 }}>{s.icon}</div>
@@ -737,6 +739,274 @@ function LocationPage() {
   );
 }
 
+// ═══ CARTE GRISE ═══
+const DEMARCHES = [
+  {
+    id:"titulaire",
+    icon:"🔄",
+    titre:"Changement de titulaire",
+    desc:"Achat d'un véhicule d'occasion",
+    docs:[
+      "Carte grise barrée et signée par l'ancien propriétaire (mention « vendu le … » + date + heure + signature)",
+      "Certificat de cession (formulaire Cerfa 15776)",
+      "Justificatif de domicile de moins de 6 mois",
+      "Pièce d'identité recto/verso",
+      "Permis de conduire",
+      "Certificat de situation administrative (non-gage) de moins de 15 jours",
+      "Contrôle technique de moins de 6 mois (si véhicule > 4 ans)"
+    ]
+  },
+  {
+    id:"duplicata",
+    icon:"🔁",
+    titre:"Duplicata (perte/vol)",
+    desc:"Carte grise perdue, volée ou détériorée",
+    docs:[
+      "Déclaration de perte (formulaire Cerfa 13753) ou de vol (récépissé de la police/gendarmerie)",
+      "Justificatif de domicile de moins de 6 mois",
+      "Pièce d'identité recto/verso",
+      "Permis de conduire",
+      "Contrôle technique en cours de validité (si véhicule > 4 ans)"
+    ]
+  },
+  {
+    id:"adresse",
+    icon:"📍",
+    titre:"Changement d'adresse",
+    desc:"Déménagement",
+    docs:[
+      "Carte grise actuelle",
+      "Nouveau justificatif de domicile de moins de 6 mois",
+      "Pièce d'identité recto/verso"
+    ]
+  },
+  {
+    id:"premiere",
+    icon:"✨",
+    titre:"Première immatriculation",
+    desc:"Véhicule neuf",
+    docs:[
+      "Certificat de conformité européen (COC) délivré par le constructeur",
+      "Facture d'achat du véhicule",
+      "Justificatif de domicile de moins de 6 mois",
+      "Pièce d'identité recto/verso",
+      "Permis de conduire",
+      "Quitus fiscal (si véhicule acheté dans l'UE)"
+    ]
+  },
+  {
+    id:"importe",
+    icon:"🌍",
+    titre:"Véhicule importé",
+    desc:"Véhicule acheté à l'étranger",
+    docs:[
+      "Carte grise étrangère originale",
+      "Facture d'achat",
+      "Quitus fiscal (délivré par le centre des impôts)",
+      "Certificat de conformité européen (ou réception à titre isolé)",
+      "Contrôle technique français de moins de 6 mois",
+      "Justificatif de domicile de moins de 6 mois",
+      "Pièce d'identité recto/verso",
+      "Permis de conduire"
+    ]
+  }
+];
+
+function CarteGrisePage() {
+  const [step, setStep] = useState(1);
+  const [selected, setSelected] = useState(null);
+  const [files, setFiles] = useState([]);
+  const [sent, setSent] = useState(false);
+  const [form, setForm] = useState({ nom:"", email:"", tel:"", adresse:"", immat:"", marque:"", modele:"", message:"" });
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+  const inp = { width:"100%", background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 16px", color:C.text, fontSize:15, fontFamily:"inherit", boxSizing:"border-box", outline:"none" };
+  const lbl = { display:"block", color:C.muted, fontSize:12, marginBottom:6, fontWeight:700, letterSpacing:0.5, textTransform:"uppercase" };
+  const canSend = form.nom && form.email && form.tel;
+
+  const demarche = DEMARCHES.find(d => d.id===selected);
+
+  return (
+    <div style={{ maxWidth:1100, margin:"0 auto", padding:"100px 24px 60px" }}>
+      <div style={{ textAlign:"center", marginBottom:48 }}>
+        <div style={{ fontSize:12, letterSpacing:4, color:C.gold, textTransform:"uppercase", marginBottom:12 }}>Service Habilité SIV · Partout en France</div>
+        <h1 style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:"clamp(32px,5vw,52px)", color:C.text, margin:"0 0 12px" }}>Carte Grise en Ligne</h1>
+        <p style={{ color:C.muted, maxWidth:580, margin:"0 auto", lineHeight:1.8 }}>Toutes vos démarches d'immatriculation, traitées par un professionnel habilité. <strong style={{color:C.gold}}>49 € de frais de service</strong> + taxes administratives officielles.</p>
+      </div>
+
+      {/* AVANTAGES */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:16, marginBottom:48 }}>
+        {[
+          ["✅","Habilités SIV","Agréés Ministère de l'Intérieur"],
+          ["🇫🇷","Partout en France","Continent & îles"],
+          ["💶","Tarif fixe 49€","Frais de service unique"],
+          ["⚡","Traitement rapide","Suivi par email"],
+        ].map(([ic,t,s],i)=>(
+          <div key={i} style={{ background:C.card, borderRadius:14, padding:20, border:`1px solid ${C.border}`, textAlign:"center" }}>
+            <div style={{ fontSize:30, marginBottom:10 }}>{ic}</div>
+            <div style={{ fontWeight:700, color:C.text, marginBottom:4, fontSize:14 }}>{t}</div>
+            <div style={{ color:C.muted, fontSize:12 }}>{s}</div>
+          </div>
+        ))}
+      </div>
+
+      {!sent ? (
+        <>
+          {/* ÉTAPE 1 - CHOIX DE LA DÉMARCHE */}
+          {step===1 && (
+            <div style={{ background:C.card, borderRadius:20, padding:32, border:`1px solid ${C.border}` }}>
+              <h2 style={{ color:C.text, margin:"0 0 8px", fontSize:22, fontFamily:"'Cormorant Garamond', serif" }}>1. Choisissez votre démarche</h2>
+              <p style={{ color:C.muted, margin:"0 0 24px", fontSize:14 }}>Sélectionnez le type d'immatriculation dont vous avez besoin.</p>
+
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))", gap:14, marginBottom:24 }}>
+                {DEMARCHES.map(d => (
+                  <div key={d.id} onClick={() => setSelected(d.id)} style={{
+                    border:`2px solid ${selected===d.id ? C.gold : C.border}`,
+                    borderRadius:14, padding:20, cursor:"pointer",
+                    background: selected===d.id ? C.gold+"12" : C.surface,
+                    transition:"all .25s"
+                  }}>
+                    <div style={{ fontSize:30, marginBottom:8 }}>{d.icon}</div>
+                    <div style={{ fontWeight:700, color:C.text, marginBottom:4, fontSize:15 }}>{d.titre}</div>
+                    <div style={{ color:C.muted, fontSize:12 }}>{d.desc}</div>
+                  </div>
+                ))}
+              </div>
+
+              <button disabled={!selected} onClick={()=>setStep(2)} style={{
+                width:"100%",
+                background: selected ? C.gold : C.border, color:C.bg, border:"none",
+                borderRadius:12, padding:16, fontWeight:800, fontSize:15,
+                cursor: selected ? "pointer" : "not-allowed", fontFamily:"inherit"
+              }}>Continuer →</button>
+            </div>
+          )}
+
+          {/* ÉTAPE 2 - DOCUMENTS REQUIS + UPLOAD */}
+          {step===2 && demarche && (
+            <div style={{ background:C.card, borderRadius:20, padding:32, border:`1px solid ${C.border}` }}>
+              <h2 style={{ color:C.text, margin:"0 0 8px", fontSize:22, fontFamily:"'Cormorant Garamond', serif" }}>2. Documents requis — {demarche.titre}</h2>
+              <p style={{ color:C.muted, margin:"0 0 24px", fontSize:14 }}>Voici la liste des documents à fournir. Préparez-les en photo ou PDF (recto-verso quand nécessaire).</p>
+
+              <div style={{ background:C.surface, borderRadius:12, padding:20, border:`1px solid ${C.border}`, marginBottom:24 }}>
+                {demarche.docs.map((d,i) => (
+                  <div key={i} style={{ display:"flex", gap:10, alignItems:"flex-start", marginBottom:12, color:C.text, fontSize:14, lineHeight:1.6 }}>
+                    <span style={{ color:C.gold, fontWeight:800, minWidth:24 }}>{String(i+1).padStart(2,"0")}</span>
+                    <span>{d}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div>
+                <label style={lbl}>📤 Uploadez vos documents *</label>
+                <div style={{ border:`2px dashed ${C.gold}50`, borderRadius:12, padding:32, textAlign:"center", cursor:"pointer", background:C.surface, transition:"all .2s" }}
+                  onClick={() => document.getElementById("cg-files").click()}>
+                  <div style={{ fontSize:40, marginBottom:10 }}>📂</div>
+                  <div style={{ color:C.text, fontWeight:700, marginBottom:4 }}>Cliquez pour sélectionner vos fichiers</div>
+                  <div style={{ color:C.muted, fontSize:13 }}>Photos JPG/PNG ou PDF — recto-verso si besoin</div>
+                  <input id="cg-files" type="file" multiple accept="image/*,application/pdf" style={{ display:"none" }}
+                    onChange={e => setFiles(Array.from(e.target.files).map(f=>({name:f.name, size:(f.size/1024).toFixed(0)+" Ko"})))} />
+                </div>
+                {files.length>0 && (
+                  <div style={{ marginTop:12, background:C.surface, borderRadius:10, padding:14 }}>
+                    <div style={{ color:C.green, fontWeight:700, fontSize:13, marginBottom:8 }}>✅ {files.length} fichier{files.length>1?"s":""} sélectionné{files.length>1?"s":""}</div>
+                    {files.map((f,i)=>(
+                      <div key={i} style={{ color:C.muted, fontSize:13, padding:"4px 0", display:"flex", justifyContent:"space-between" }}>
+                        <span>📄 {f.name}</span><span style={{color:C.text}}>{f.size}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display:"flex", gap:12, marginTop:24 }}>
+                <button onClick={()=>setStep(1)} style={{ flex:1, background:"transparent", color:C.text, border:`1px solid ${C.border}`, borderRadius:12, padding:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>← Retour</button>
+                <button onClick={()=>setStep(3)} style={{ flex:2, background:C.gold, color:C.bg, border:"none", borderRadius:12, padding:14, fontWeight:800, cursor:"pointer", fontFamily:"inherit" }}>Continuer →</button>
+              </div>
+            </div>
+          )}
+
+          {/* ÉTAPE 3 - INFOS PERSO */}
+          {step===3 && demarche && (
+            <div style={{ background:C.card, borderRadius:20, padding:32, border:`1px solid ${C.border}` }}>
+              <h2 style={{ color:C.text, margin:"0 0 8px", fontSize:22, fontFamily:"'Cormorant Garamond', serif" }}>3. Vos informations</h2>
+              <p style={{ color:C.muted, margin:"0 0 24px", fontSize:14 }}>Pour traiter votre dossier et vous tenir informé.</p>
+
+              <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+                  <div><label style={lbl}>Nom & Prénom *</label>
+                    <input value={form.nom} onChange={e=>set("nom",e.target.value)} placeholder="Jean Dupont" style={inp} />
+                  </div>
+                  <div><label style={lbl}>Téléphone *</label>
+                    <input value={form.tel} onChange={e=>set("tel",e.target.value)} placeholder="06 XX XX XX XX" style={inp} />
+                  </div>
+                </div>
+                <div><label style={lbl}>Email *</label>
+                  <input type="email" value={form.email} onChange={e=>set("email",e.target.value)} placeholder="votre@email.com" style={inp} />
+                </div>
+                <div><label style={lbl}>Adresse complète</label>
+                  <input value={form.adresse} onChange={e=>set("adresse",e.target.value)} placeholder="N° Rue, Code postal, Ville" style={inp} />
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:16 }}>
+                  <div><label style={lbl}>Immatriculation</label>
+                    <input value={form.immat} onChange={e=>set("immat",e.target.value)} placeholder="AA-123-AA" style={inp} />
+                  </div>
+                  <div><label style={lbl}>Marque</label>
+                    <input value={form.marque} onChange={e=>set("marque",e.target.value)} placeholder="Peugeot..." style={inp} />
+                  </div>
+                  <div><label style={lbl}>Modèle</label>
+                    <input value={form.modele} onChange={e=>set("modele",e.target.value)} placeholder="208..." style={inp} />
+                  </div>
+                </div>
+                <div><label style={lbl}>Précisions complémentaires</label>
+                  <textarea value={form.message} onChange={e=>set("message",e.target.value)} rows={3} placeholder="Toute info utile pour traiter votre dossier..." style={{...inp, resize:"vertical"}} />
+                </div>
+
+                <div style={{ background:`${C.gold}15`, border:`1px solid ${C.gold}40`, borderRadius:12, padding:16 }}>
+                  <div style={{ color:C.gold, fontWeight:700, marginBottom:8, fontSize:14 }}>📋 Récapitulatif</div>
+                  <div style={{ color:C.muted, fontSize:13, lineHeight:1.8 }}>
+                    Démarche : <strong style={{color:C.text}}>{demarche.titre}</strong><br/>
+                    Documents fournis : <strong style={{color:C.text}}>{files.length} fichier{files.length>1?"s":""}</strong><br/>
+                    Frais de service : <strong style={{color:C.gold}}>49 €</strong> (hors taxes administratives)
+                  </div>
+                </div>
+
+                <div style={{ display:"flex", gap:12 }}>
+                  <button onClick={()=>setStep(2)} style={{ flex:1, background:"transparent", color:C.text, border:`1px solid ${C.border}`, borderRadius:12, padding:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>← Retour</button>
+                  <button disabled={!canSend} onClick={()=>setSent(true)} style={{
+                    flex:2, background: canSend ? C.gold : C.border, color:C.bg, border:"none",
+                    borderRadius:12, padding:14, fontWeight:800, cursor: canSend ? "pointer" : "not-allowed", fontFamily:"inherit"
+                  }}>✉️ Envoyer ma demande</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={{ background:C.card, borderRadius:20, padding:48, border:`1px solid ${C.gold}40`, textAlign:"center" }}>
+          <div style={{ fontSize:64, marginBottom:16 }}>📄</div>
+          <h2 style={{ color:C.green, fontSize:26, margin:"0 0 12px", fontFamily:"'Cormorant Garamond', serif" }}>Demande reçue !</h2>
+          <p style={{ color:C.muted, lineHeight:1.9, margin:"0 0 20px" }}>
+            Merci <strong style={{color:C.text}}>{form.nom}</strong> !<br/>
+            Votre demande de <strong style={{color:C.text}}>{demarche?.titre.toLowerCase()}</strong> a bien été reçue.
+          </p>
+          <div style={{ background:C.surface, borderRadius:12, padding:20, marginBottom:24, textAlign:"left" }}>
+            <div style={{ color:C.gold, fontWeight:700, marginBottom:10, fontSize:13 }}>📌 Prochaines étapes</div>
+            <div style={{ color:C.muted, fontSize:13, lineHeight:1.9 }}>
+              <strong style={{color:C.text}}>1.</strong> Nous vérifions vos documents sous 24h<br/>
+              <strong style={{color:C.text}}>2.</strong> Nous vous envoyons un devis détaillé par email à <strong style={{color:C.gold}}>{form.email}</strong><br/>
+              <strong style={{color:C.text}}>3.</strong> Après règlement, nous instruisons le dossier auprès de l'ANTS<br/>
+              <strong style={{color:C.text}}>4.</strong> Vous recevez votre carte grise par courrier sécurisé
+            </div>
+          </div>
+          <button onClick={()=>{setSent(false);setStep(1);setSelected(null);setFiles([]);setForm({nom:"",email:"",tel:"",adresse:"",immat:"",marque:"",modele:"",message:""});}} style={{ background:"transparent", color:C.gold, border:`1px solid ${C.gold}`, borderRadius:10, padding:"10px 24px", cursor:"pointer", fontFamily:"inherit", fontWeight:700 }}>
+            Nouvelle demande
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ═══ CONTACT ═══
 function ContactPage() {
   const [sent, setSent] = useState(false);
@@ -828,6 +1098,7 @@ export default function App() {
       {page==="vehicule" && <VehiculePage vehicle={selectedVehicle} setPage={setPage} />}
       {page==="rachat" && <RachatPage />}
       {page==="location" && <LocationPage />}
+      {page==="cartegrise" && <CarteGrisePage />}
       {page==="contact" && <ContactPage />}
 
       <footer style={{ background:C.surface, borderTop:`1px solid ${C.border}`, padding:"40px 24px" }}>
@@ -841,7 +1112,7 @@ export default function App() {
             </div>
             <div>
               <div style={{ color:C.gold, fontWeight:700, fontSize:12, letterSpacing:2, textTransform:"uppercase", marginBottom:12 }}>Services</div>
-              {["Rachat cash","Dépôt-Vente 490€","Vente de véhicules","Location estivale"].map(s=>(
+              {["Rachat cash","Dépôt-Vente 490€","Vente de véhicules","Location estivale","Carte Grise 49€"].map(s=>(
                 <div key={s} style={{ color:C.muted, fontSize:13, marginBottom:8 }}>{s}</div>
               ))}
             </div>
