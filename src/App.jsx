@@ -10,9 +10,48 @@ const C = {
   muted: "#888880",
   border: "#2A2A2A",
   green: "#4ADE80",
+  red: "#F87171",
 };
 
-const LOGO = "/photos/logo/logo.png";
+const LOGO = "./photos/logo/logo.png";
+
+// ═══ FORMSPREE — envoi des demandes par email ═══
+const FORMSPREE_URL = "https://formspree.io/f/xjglrdjw";
+
+async function sendToFormspree(type, data, files = []) {
+  try {
+    const formData = new FormData();
+    formData.append("_subject", `[Reflex'Auto 2A] ${type}`);
+    formData.append("Type de demande", type);
+    
+    // Ajout de tous les champs du formulaire
+    Object.entries(data).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        formData.append(key, value.join(", "));
+      } else if (value !== undefined && value !== null && value !== "") {
+        formData.append(key, value);
+      }
+    });
+    
+    // Ajout des fichiers (photos, documents, etc.)
+    if (files && files.length > 0) {
+      files.forEach((file, idx) => {
+        formData.append(`fichier_${idx + 1}`, file);
+      });
+    }
+    
+    const response = await fetch(FORMSPREE_URL, {
+      method: "POST",
+      body: formData,
+      headers: { Accept: "application/json" }
+    });
+    
+    return response.ok;
+  } catch (error) {
+    console.error("Erreur d'envoi:", error);
+    return false;
+  }
+}
 
 const MARQUES = ["Alfa Romeo","Audi","BMW","Citroën","Dacia","DS","Ferrari","Fiat","Ford","Honda","Hyundai","Jaguar","Kia","Lamborghini","Land Rover","Maserati","Mazda","Mercedes","Mini","Mitsubishi","Nissan","Opel","Peugeot","Porsche","Renault","Seat","Skoda","Suzuki","Tesla","Toyota","Volkswagen","Volvo"];
 const CARBURANTS = ["Essence","Diesel","Hybride","Hybride rechargeable","Électrique","GPL"];
@@ -39,7 +78,7 @@ const STOCK = [
     badge:"Premium",
     description:"Magnifique Mercedes Classe E 300 de hybride rechargeable, finition AMG Line. État neuf, parfaitement entretenue. Idéale pour la route comme pour la ville grâce à son mode 100% électrique.",
     points:["État neuf","Finition AMG Line","Hybride rechargeable","Boîte 9G-Tronic","Intérieur cuir"],
-    photos:["/photos/mercedes/1.png","/photos/mercedes/2.png","/photos/mercedes/3.png","/photos/mercedes/4.png","/photos/mercedes/5.png"]
+    photos:["./photos/mercedes/1.png","./photos/mercedes/2.png","./photos/mercedes/3.png","./photos/mercedes/4.png","./photos/mercedes/5.png"]
   },
   {
     id:2,
@@ -59,7 +98,7 @@ const STOCK = [
     badge:"Sans AdBlue",
     description:"Peugeot 2008 Pack Style, version sans AdBlue. Véhicule non-fumeur, toujours entretenu. Révision effectuée à 121 000 km, kit de distribution fait, contrôle technique OK. Idéal premier achat ou seconde voiture.",
     points:["Version sans AdBlue","Non-fumeur","Toujours entretenu","Révision faite à 121 000 km","Kit distribution fait","CT OK"],
-    photos:["/photos/peugeot/1.png","/photos/peugeot/2.png","/photos/peugeot/3.png","/photos/peugeot/4.png","/photos/peugeot/5.jpeg"]
+    photos:["./photos/peugeot/1.png","./photos/peugeot/2.png","./photos/peugeot/3.png","./photos/peugeot/4.png","./photos/peugeot/5.jpeg"]
   },
 ];
 
@@ -247,6 +286,8 @@ function VehiculePage({ vehicle, setPage }) {
   const [photoIdx, setPhotoIdx] = useState(0);
   const [showContact, setShowContact] = useState(false);
   const [contactSent, setContactSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState(null);
   const [form, setForm] = useState({ nom:"", email:"", message:"" });
   const set = (k,v) => setForm(f=>({...f,[k]:v}));
 
@@ -254,6 +295,27 @@ function VehiculePage({ vehicle, setPage }) {
     setPage("stock");
     return null;
   }
+
+  const handleSubmit = async () => {
+    setSending(true);
+    setError(null);
+    const success = await sendToFormspree(
+      `Demande d'info — ${vehicle.marque} ${vehicle.modele}`,
+      {
+        ...form,
+        "Véhicule": `${vehicle.marque} ${vehicle.modele}`,
+        "Prix": `${vehicle.prix} €`,
+        "Année": vehicle.annee,
+        "Kilométrage": `${vehicle.km} km`,
+      }
+    );
+    setSending(false);
+    if (success) {
+      setContactSent(true);
+    } else {
+      setError("Erreur d'envoi. Contactez-nous à Reflexauto2a@gmail.com");
+    }
+  };
 
   return (
     <div style={{ maxWidth:1200, margin:"0 auto", padding:"100px 24px 60px" }}>
@@ -343,7 +405,14 @@ function VehiculePage({ vehicle, setPage }) {
                   <input value={form.nom} onChange={e=>set("nom",e.target.value)} placeholder="Votre nom *" style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:12, color:C.text, fontFamily:"inherit" }} />
                   <input type="email" value={form.email} onChange={e=>set("email",e.target.value)} placeholder="Votre email *" style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:12, color:C.text, fontFamily:"inherit" }} />
                   <textarea value={form.message} onChange={e=>set("message",e.target.value)} placeholder="Votre message..." rows={4} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:12, color:C.text, fontFamily:"inherit", resize:"none" }} />
-                  <button onClick={() => { if(form.nom && form.email) setContactSent(true); }} style={{ background:C.gold, color:C.bg, border:"none", borderRadius:10, padding:14, fontWeight:800, cursor:"pointer", fontFamily:"inherit" }}>Envoyer ma demande</button>
+                  <button disabled={sending} onClick={() => { if(form.nom && form.email && !sending) handleSubmit(); }} style={{ background: sending ? C.border : C.gold, color:C.bg, border:"none", borderRadius:10, padding:14, fontWeight:800, cursor:sending ? "not-allowed" : "pointer", fontFamily:"inherit" }}>
+                    {sending ? "Envoi en cours..." : "Envoyer ma demande"}
+                  </button>
+                  {error && (
+                    <div style={{ background:"#7F1D1D33", border:`1px solid #F8717180`, borderRadius:8, padding:10, color:"#FCA5A5", fontSize:12 }}>
+                      ⚠️ {error}
+                    </div>
+                  )}
                   <button onClick={() => setShowContact(false)} style={{ background:"transparent", color:C.muted, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13 }}>Annuler</button>
                 </div>
               </>
@@ -447,7 +516,9 @@ function RachatPage() {
   const [service, setService] = useState("rachat");
   const [step, setStep] = useState(1);
   const [sent, setSent] = useState(false);
-  const [imgs, setImgs] = useState([]);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState(null);
+  const [imgs, setImgs] = useState([]); // tableau de vrais fichiers File
   const [form, setForm] = useState({
     nom:"", email:"", marque:"", modele:"", annee:"", km:"",
     carburant:"", boite:"", puissance:"", couleur:"",
@@ -459,6 +530,30 @@ function RachatPage() {
 
   const canNext = form.marque && form.annee && form.km && form.etat;
   const canSend = form.nom && form.email;
+
+  const handleImgsAdd = (newFiles) => {
+    setImgs(prev => [...prev, ...Array.from(newFiles)]);
+  };
+  const removeImg = (idx) => setImgs(prev => prev.filter((_, i) => i !== idx));
+
+  const handleSubmit = async () => {
+    setSending(true);
+    setError(null);
+    const success = await sendToFormspree(
+      service === "rachat" ? "Rachat Cash" : "Dépôt-Vente 490€",
+      {
+        ...form,
+        "Nombre de photos": imgs.length,
+      },
+      imgs
+    );
+    setSending(false);
+    if (success) {
+      setSent(true);
+    } else {
+      setError("Une erreur est survenue. Merci de nous contacter directement à Reflexauto2a@gmail.com");
+    }
+  };
 
   return (
     <div style={{ maxWidth:1100, margin:"0 auto", padding:"100px 24px 60px" }}>
@@ -577,13 +672,22 @@ function RachatPage() {
                   onClick={() => document.getElementById("photo-input").click()}>
                   <div style={{ fontSize:32, marginBottom:8 }}>📸</div>
                   <div>Cliquez pour ajouter des photos</div>
-                  <div style={{ fontSize:12, marginTop:4 }}>JPG, PNG — extérieur, intérieur, compteur</div>
+                  <div style={{ fontSize:12, marginTop:4 }}>JPG, PNG — extérieur, intérieur, compteur (plusieurs à la fois)</div>
                   <input id="photo-input" type="file" multiple accept="image/*" style={{ display:"none" }}
-                    onChange={e => setImgs(Array.from(e.target.files).map(f=>f.name))} />
+                    onChange={e => { handleImgsAdd(e.target.files); e.target.value = ""; }} />
                 </div>
                 {imgs.length>0 && (
-                  <div style={{ marginTop:8, display:"flex", flexWrap:"wrap", gap:6 }}>
-                    {imgs.map((n,i)=><Tag key={i}>📷 {n}</Tag>)}
+                  <div style={{ marginTop:8, background:C.surface, borderRadius:10, padding:12 }}>
+                    <div style={{ color:C.green, fontWeight:700, fontSize:13, marginBottom:8, display:"flex", justifyContent:"space-between" }}>
+                      <span>✅ {imgs.length} photo{imgs.length>1?"s":""}</span>
+                      <button onClick={() => setImgs([])} style={{ background:"transparent", color:C.red, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12 }}>Tout retirer</button>
+                    </div>
+                    {imgs.map((f, i) => (
+                      <div key={i} style={{ color:C.muted, fontSize:12, padding:"4px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                        <span>📷 {f.name}</span>
+                        <button onClick={() => removeImg(i)} style={{ background:"transparent", color:C.red, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14 }}>✕</button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -625,11 +729,16 @@ function RachatPage() {
 
               <div style={{ display:"flex", gap:12 }}>
                 <button onClick={()=>setStep(1)} style={{ flex:1, background:"transparent", color:C.text, border:`1px solid ${C.border}`, borderRadius:12, padding:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>← Retour</button>
-                <button disabled={!canSend} onClick={()=>setSent(true)} style={{
-                  flex:2, background: canSend ? C.gold : C.border, color:C.bg, border:"none",
-                  borderRadius:12, padding:14, fontWeight:800, cursor: canSend ? "pointer" : "not-allowed", fontFamily:"inherit"
-                }}>✉️ Envoyer ma demande</button>
+                <button disabled={!canSend || sending} onClick={handleSubmit} style={{
+                  flex:2, background: (canSend && !sending) ? C.gold : C.border, color:C.bg, border:"none",
+                  borderRadius:12, padding:14, fontWeight:800, cursor: (canSend && !sending) ? "pointer" : "not-allowed", fontFamily:"inherit"
+                }}>{sending ? "Envoi en cours..." : "✉️ Envoyer ma demande"}</button>
               </div>
+              {error && (
+                <div style={{ background:"#7F1D1D33", border:`1px solid #F8717180`, borderRadius:10, padding:14, color:"#FCA5A5", fontSize:13, marginTop:8 }}>
+                  ⚠️ {error}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -654,11 +763,25 @@ function RachatPage() {
 // ═══ LOCATION ═══
 function LocationPage() {
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState(null);
   const [form, setForm] = useState({ nom:"", email:"", debut:"", fin:"", vehicule:"", message:"" });
   const set = (k,v) => setForm(f=>({...f,[k]:v}));
   const inp = { width:"100%", background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 16px", color:C.text, fontSize:15, fontFamily:"inherit", boxSizing:"border-box", outline:"none" };
   const lbl = { display:"block", color:C.muted, fontSize:12, marginBottom:6, fontWeight:700, letterSpacing:0.5, textTransform:"uppercase" };
   const canSend = form.nom && form.email;
+
+  const handleSubmit = async () => {
+    setSending(true);
+    setError(null);
+    const success = await sendToFormspree("Demande de Location", form);
+    setSending(false);
+    if (success) {
+      setSent(true);
+    } else {
+      setError("Une erreur est survenue. Merci de nous contacter directement à Reflexauto2a@gmail.com");
+    }
+  };
 
   return (
     <div style={{ maxWidth:900, margin:"0 auto", padding:"100px 24px 60px" }}>
@@ -718,11 +841,16 @@ function LocationPage() {
                 placeholder="Nombre de conducteurs, âge du conducteur principal, options souhaitées (GPS, siège bébé...)"
                 rows={4} style={{...inp, resize:"vertical"}} />
             </div>
-            <button disabled={!canSend} onClick={()=>setSent(true)} style={{
-              background: canSend ? C.gold : C.border, color:C.bg, border:"none",
+            <button disabled={!canSend || sending} onClick={handleSubmit} style={{
+              background: (canSend && !sending) ? C.gold : C.border, color:C.bg, border:"none",
               borderRadius:12, padding:16, fontWeight:800, fontSize:15,
-              cursor: canSend ? "pointer" : "not-allowed", fontFamily:"inherit"
-            }}>✉️ Envoyer ma demande de location</button>
+              cursor: (canSend && !sending) ? "pointer" : "not-allowed", fontFamily:"inherit"
+            }}>{sending ? "Envoi en cours..." : "✉️ Envoyer ma demande de location"}</button>
+            {error && (
+              <div style={{ background:"#7F1D1D33", border:`1px solid #F8717180`, borderRadius:10, padding:14, color:"#FCA5A5", fontSize:13 }}>
+                ⚠️ {error}
+              </div>
+            )}
           </div>
         </div>
       ) : (
@@ -815,8 +943,10 @@ const DEMARCHES = [
 function CarteGrisePage() {
   const [step, setStep] = useState(1);
   const [selected, setSelected] = useState(null);
-  const [files, setFiles] = useState([]);
+  const [files, setFiles] = useState([]); // tableau de vrais fichiers File
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState(null);
   const [form, setForm] = useState({ nom:"", email:"", tel:"", adresse:"", immat:"", marque:"", modele:"", message:"" });
   const set = (k,v) => setForm(f=>({...f,[k]:v}));
   const inp = { width:"100%", background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 16px", color:C.text, fontSize:15, fontFamily:"inherit", boxSizing:"border-box", outline:"none" };
@@ -824,6 +954,36 @@ function CarteGrisePage() {
   const canSend = form.nom && form.email && form.tel;
 
   const demarche = DEMARCHES.find(d => d.id===selected);
+
+  const handleFilesAdd = (newFiles) => {
+    // Ajoute aux fichiers existants au lieu de remplacer
+    const filesArray = Array.from(newFiles);
+    setFiles(prev => [...prev, ...filesArray]);
+  };
+
+  const removeFile = (idx) => {
+    setFiles(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSubmit = async () => {
+    setSending(true);
+    setError(null);
+    const success = await sendToFormspree(
+      `Carte Grise — ${demarche?.titre || ""}`,
+      {
+        ...form,
+        "Démarche": demarche?.titre,
+        "Nombre de fichiers": files.length,
+      },
+      files
+    );
+    setSending(false);
+    if (success) {
+      setSent(true);
+    } else {
+      setError("Une erreur est survenue. Merci de nous contacter directement à Reflexauto2a@gmail.com");
+    }
+  };
 
   return (
     <div style={{ maxWidth:1100, margin:"0 auto", padding:"100px 24px 60px" }}>
@@ -901,19 +1061,39 @@ function CarteGrisePage() {
                 <div style={{ border:`2px dashed ${C.gold}50`, borderRadius:12, padding:32, textAlign:"center", cursor:"pointer", background:C.surface, transition:"all .2s" }}
                   onClick={() => document.getElementById("cg-files").click()}>
                   <div style={{ fontSize:40, marginBottom:10 }}>📂</div>
-                  <div style={{ color:C.text, fontWeight:700, marginBottom:4 }}>Cliquez pour sélectionner vos fichiers</div>
-                  <div style={{ color:C.muted, fontSize:13 }}>Photos JPG/PNG ou PDF — recto-verso si besoin</div>
+                  <div style={{ color:C.text, fontWeight:700, marginBottom:4 }}>Cliquez pour ajouter des fichiers</div>
+                  <div style={{ color:C.muted, fontSize:13 }}>Vous pouvez sélectionner plusieurs documents à la fois</div>
+                  <div style={{ color:C.muted, fontSize:12, marginTop:4 }}>Photos JPG/PNG ou PDF — recto-verso si besoin</div>
                   <input id="cg-files" type="file" multiple accept="image/*,application/pdf" style={{ display:"none" }}
-                    onChange={e => setFiles(Array.from(e.target.files).map(f=>({name:f.name, size:(f.size/1024).toFixed(0)+" Ko"})))} />
+                    onChange={e => {
+                      handleFilesAdd(e.target.files);
+                      e.target.value = ""; // permet de réajouter le même fichier si besoin
+                    }} />
                 </div>
                 {files.length>0 && (
                   <div style={{ marginTop:12, background:C.surface, borderRadius:10, padding:14 }}>
-                    <div style={{ color:C.green, fontWeight:700, fontSize:13, marginBottom:8 }}>✅ {files.length} fichier{files.length>1?"s":""} sélectionné{files.length>1?"s":""}</div>
-                    {files.map((f,i)=>(
-                      <div key={i} style={{ color:C.muted, fontSize:13, padding:"4px 0", display:"flex", justifyContent:"space-between" }}>
-                        <span>📄 {f.name}</span><span style={{color:C.text}}>{f.size}</span>
+                    <div style={{ color:C.green, fontWeight:700, fontSize:13, marginBottom:10, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                      <span>✅ {files.length} fichier{files.length>1?"s":""} sélectionné{files.length>1?"s":""}</span>
+                      <button onClick={() => setFiles([])} style={{ background:"transparent", color:C.red, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600 }}>
+                        Tout retirer
+                      </button>
+                    </div>
+                    {files.map((f, i) => (
+                      <div key={i} style={{ color:C.muted, fontSize:13, padding:"6px 0", display:"flex", justifyContent:"space-between", alignItems:"center", borderTop: i > 0 ? `1px solid ${C.border}` : "none" }}>
+                        <span>📄 {f.name}</span>
+                        <div style={{ display:"flex", gap:12, alignItems:"center" }}>
+                          <span style={{color:C.text}}>{(f.size/1024).toFixed(0)} Ko</span>
+                          <button onClick={() => removeFile(i)} style={{ background:"transparent", color:C.red, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14 }} title="Retirer ce fichier">
+                            ✕
+                          </button>
+                        </div>
                       </div>
                     ))}
+                    <div style={{ marginTop:10, paddingTop:10, borderTop:`1px solid ${C.border}` }}>
+                      <button onClick={() => document.getElementById("cg-files").click()} style={{ background:"transparent", color:C.gold, border:`1px dashed ${C.gold}`, borderRadius:8, padding:"8px 14px", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, width:"100%" }}>
+                        + Ajouter d'autres fichiers
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -972,11 +1152,16 @@ function CarteGrisePage() {
 
                 <div style={{ display:"flex", gap:12 }}>
                   <button onClick={()=>setStep(2)} style={{ flex:1, background:"transparent", color:C.text, border:`1px solid ${C.border}`, borderRadius:12, padding:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>← Retour</button>
-                  <button disabled={!canSend} onClick={()=>setSent(true)} style={{
-                    flex:2, background: canSend ? C.gold : C.border, color:C.bg, border:"none",
-                    borderRadius:12, padding:14, fontWeight:800, cursor: canSend ? "pointer" : "not-allowed", fontFamily:"inherit"
-                  }}>✉️ Envoyer ma demande</button>
+                  <button disabled={!canSend || sending} onClick={handleSubmit} style={{
+                    flex:2, background: (canSend && !sending) ? C.gold : C.border, color:C.bg, border:"none",
+                    borderRadius:12, padding:14, fontWeight:800, cursor: (canSend && !sending) ? "pointer" : "not-allowed", fontFamily:"inherit"
+                  }}>{sending ? "Envoi en cours..." : "✉️ Envoyer ma demande"}</button>
                 </div>
+                {error && (
+                  <div style={{ background:"#7F1D1D33", border:`1px solid #F8717180`, borderRadius:10, padding:14, color:"#FCA5A5", fontSize:13, marginTop:8 }}>
+                    ⚠️ {error}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1010,6 +1195,24 @@ function CarteGrisePage() {
 // ═══ CONTACT ═══
 function ContactPage() {
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState(null);
+  const [form, setForm] = useState({ nom:"", email:"", objet:"", message:"" });
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+  const canSend = form.nom && form.email && form.message;
+
+  const handleSubmit = async () => {
+    setSending(true);
+    setError(null);
+    const success = await sendToFormspree("Contact général", form);
+    setSending(false);
+    if (success) {
+      setSent(true);
+    } else {
+      setError("Une erreur est survenue. Merci de nous contacter directement à Reflexauto2a@gmail.com");
+    }
+  };
+
   return (
     <div style={{ maxWidth:800, margin:"0 auto", padding:"100px 24px 60px" }}>
       <div style={{ textAlign:"center", marginBottom:48 }}>
@@ -1038,14 +1241,19 @@ function ContactPage() {
           <h2 style={{ color:C.text, margin:"0 0 20px", fontFamily:"'Cormorant Garamond', serif", fontSize:24 }}>Envoyer un message</h2>
           <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
-              <input placeholder="Nom & Prénom *" style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:12, color:C.text, fontFamily:"inherit" }} />
-              <input type="email" placeholder="Email *" style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:12, color:C.text, fontFamily:"inherit" }} />
+              <input value={form.nom} onChange={e=>set("nom",e.target.value)} placeholder="Nom & Prénom *" style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:12, color:C.text, fontFamily:"inherit" }} />
+              <input type="email" value={form.email} onChange={e=>set("email",e.target.value)} placeholder="Email *" style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:12, color:C.text, fontFamily:"inherit" }} />
             </div>
-            <input placeholder="Objet de votre message" style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:12, color:C.text, fontFamily:"inherit" }} />
-            <textarea placeholder="Votre message..." rows={5} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:12, color:C.text, fontFamily:"inherit", resize:"vertical" }} />
-            <button onClick={()=>setSent(true)} style={{ background:C.gold, color:C.bg, border:"none", borderRadius:10, padding:14, fontWeight:800, cursor:"pointer", fontFamily:"inherit", fontSize:15 }}>
-              Envoyer →
+            <input value={form.objet} onChange={e=>set("objet",e.target.value)} placeholder="Objet de votre message" style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:12, color:C.text, fontFamily:"inherit" }} />
+            <textarea value={form.message} onChange={e=>set("message",e.target.value)} placeholder="Votre message... *" rows={5} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:12, color:C.text, fontFamily:"inherit", resize:"vertical" }} />
+            <button disabled={!canSend || sending} onClick={handleSubmit} style={{ background:(canSend && !sending) ? C.gold : C.border, color:C.bg, border:"none", borderRadius:10, padding:14, fontWeight:800, cursor:(canSend && !sending) ? "pointer" : "not-allowed", fontFamily:"inherit", fontSize:15 }}>
+              {sending ? "Envoi en cours..." : "Envoyer →"}
             </button>
+            {error && (
+              <div style={{ background:"#7F1D1D33", border:`1px solid #F8717180`, borderRadius:10, padding:14, color:"#FCA5A5", fontSize:13 }}>
+                ⚠️ {error}
+              </div>
+            )}
           </div>
         </div>
       ) : (
