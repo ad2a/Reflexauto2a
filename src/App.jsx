@@ -18,24 +18,83 @@ const LOGO = "./photos/logo/logo.png";
 // ═══ FORMSPREE — envoi des demandes par email ═══
 const FORMSPREE_URL = "https://formspree.io/f/xjglrdjw";
 
+// ═══ CLOUDINARY — hébergement des fichiers ═══
+const CLOUDINARY_CLOUD_NAME = "dokugblpm";
+const CLOUDINARY_UPLOAD_PRESET = "reflexauto";
+
+// Upload un fichier sur Cloudinary, retourne l'URL ou null si échec
+async function uploadToCloudinary(file) {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+    
+    // Pour les images on utilise /image/upload, pour les PDF /raw/upload
+    const isImage = file.type.startsWith("image/");
+    const endpoint = isImage 
+      ? `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`
+      : `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`;
+    
+    const response = await fetch(endpoint, {
+      method: "POST",
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Cloudinary error:", response.status, errorText);
+      return null;
+    }
+    
+    const data = await response.json();
+    return data.secure_url || null;
+  } catch (error) {
+    console.error("Cloudinary upload error:", error);
+    return null;
+  }
+}
+
 async function sendToFormspree(type, data, files = []) {
   try {
+    // 1. D'abord on upload tous les fichiers sur Cloudinary
+    const fileLinks = [];
+    if (files && files.length > 0) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const url = await uploadToCloudinary(file);
+        if (url) {
+          fileLinks.push({
+            nom: file.name,
+            url: url,
+            taille: `${(file.size / 1024).toFixed(0)} Ko`
+          });
+        }
+      }
+    }
+    
+    // 2. Ensuite on envoie l'email à Formspree avec les liens des fichiers
     const formData = new FormData();
     formData.append("_subject", `[Reflex Auto 2A] ${type}`);
     formData.append("type_demande", type);
     
-    // Helper pour normaliser les noms de champs (Formspree n'aime pas les espaces/accents)
     const normalizeKey = (key) => {
       return key
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // retire accents
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "_") // remplace tout non-alphanum par _
-        .replace(/^_+|_+$/g, ""); // retire _ en début/fin
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "");
     };
     
-    // Ajout de tous les champs du formulaire avec clés normalisées
+    // Email du client (champ obligatoire pour Formspree, doit être valide)
+    if (data.email) {
+      formData.append("email", String(data.email));
+      formData.append("_replyto", String(data.email));
+    }
+    
     Object.entries(data).forEach(([key, value]) => {
       const normalKey = normalizeKey(key);
+      // On évite de réécrire le champ email déjà ajouté
+      if (normalKey === "email") return;
       if (Array.isArray(value)) {
         formData.append(normalKey, value.join(", "));
       } else if (value !== undefined && value !== null && value !== "") {
@@ -43,11 +102,13 @@ async function sendToFormspree(type, data, files = []) {
       }
     });
     
-    // Ajout des fichiers
-    if (files && files.length > 0) {
-      files.forEach((file, idx) => {
-        formData.append(`fichier_${idx + 1}`, file);
-      });
+    // Ajout des liens des fichiers (formaté pour être lisible dans l'email)
+    if (fileLinks.length > 0) {
+      const linksText = fileLinks.map((f, i) => 
+        `📎 Fichier ${i + 1} : ${f.nom} (${f.taille})\n   ➜ ${f.url}`
+      ).join("\n\n");
+      formData.append("documents_joints", linksText);
+      formData.append("nombre_de_fichiers", String(fileLinks.length));
     }
     
     const response = await fetch(FORMSPREE_URL, {
@@ -59,6 +120,11 @@ async function sendToFormspree(type, data, files = []) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Formspree error:", response.status, errorText);
+    }
+    
+    // Erreur si certains fichiers n'ont pas pu être uploadés
+    if (files.length > 0 && fileLinks.length < files.length) {
+      console.error(`Seulement ${fileLinks.length}/${files.length} fichiers uploadés`);
     }
     
     return response.ok;
