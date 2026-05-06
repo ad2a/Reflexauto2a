@@ -29,11 +29,11 @@ async function uploadToCloudinary(file) {
     formData.append("file", file);
     formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
     
-    // Pour les images on utilise /image/upload, pour les PDF /raw/upload
-    const isImage = file.type.startsWith("image/");
-    const endpoint = isImage 
-      ? `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`
-      : `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`;
+    // Cloudinary a 3 endpoints selon le type :
+    // - /image/upload pour JPG, PNG, etc.
+    // - /raw/upload pour PDF, docs, etc.
+    // - /auto/upload détecte automatiquement (le plus sûr pour tous les cas)
+    const endpoint = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`;
     
     const response = await fetch(endpoint, {
       method: "POST",
@@ -47,7 +47,8 @@ async function uploadToCloudinary(file) {
     }
     
     const data = await response.json();
-    return data.secure_url || null;
+    // On utilise l'URL sécurisée originale (pas de transformation auto)
+    return data.secure_url || data.url || null;
   } catch (error) {
     console.error("Cloudinary upload error:", error);
     return null;
