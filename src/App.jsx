@@ -21,19 +21,29 @@ const FORMSPREE_URL = "https://formspree.io/f/xjglrdjw";
 async function sendToFormspree(type, data, files = []) {
   try {
     const formData = new FormData();
-    formData.append("_subject", `[Reflex'Auto 2A] ${type}`);
-    formData.append("Type de demande", type);
+    formData.append("_subject", `[Reflex Auto 2A] ${type}`);
+    formData.append("type_demande", type);
     
-    // Ajout de tous les champs du formulaire
+    // Helper pour normaliser les noms de champs (Formspree n'aime pas les espaces/accents)
+    const normalizeKey = (key) => {
+      return key
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // retire accents
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_") // remplace tout non-alphanum par _
+        .replace(/^_+|_+$/g, ""); // retire _ en début/fin
+    };
+    
+    // Ajout de tous les champs du formulaire avec clés normalisées
     Object.entries(data).forEach(([key, value]) => {
+      const normalKey = normalizeKey(key);
       if (Array.isArray(value)) {
-        formData.append(key, value.join(", "));
+        formData.append(normalKey, value.join(", "));
       } else if (value !== undefined && value !== null && value !== "") {
-        formData.append(key, value);
+        formData.append(normalKey, String(value));
       }
     });
     
-    // Ajout des fichiers (photos, documents, etc.)
+    // Ajout des fichiers
     if (files && files.length > 0) {
       files.forEach((file, idx) => {
         formData.append(`fichier_${idx + 1}`, file);
@@ -45,6 +55,11 @@ async function sendToFormspree(type, data, files = []) {
       body: formData,
       headers: { Accept: "application/json" }
     });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Formspree error:", response.status, errorText);
+    }
     
     return response.ok;
   } catch (error) {
