@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Analytics } from "@vercel/analytics/react";
 
 const C = {
   bg: "#0D0D0D",
@@ -1381,6 +1382,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight:"100vh", background:C.bg }}>
+      <Analytics />
       <NavBar page={page} setPage={setPage} />
 
       {page==="home" && <HomePage setPage={setPage} setSelectedVehicle={setSelectedVehicle} />}
