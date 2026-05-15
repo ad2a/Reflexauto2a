@@ -47,8 +47,16 @@ async function uploadToCloudinary(file) {
     }
     
     const data = await response.json();
-    // On utilise l'URL sécurisée originale (pas de transformation auto)
-    return data.secure_url || data.url || null;
+    let url = data.secure_url || data.url || null;
+    
+    // On force le téléchargement direct en ajoutant fl_attachment dans l'URL
+    // Ex: https://res.cloudinary.com/xxx/image/upload/v123/file.jpg
+    //  -> https://res.cloudinary.com/xxx/image/upload/fl_attachment/v123/file.jpg
+    if (url && url.includes("/upload/")) {
+      url = url.replace("/upload/", "/upload/fl_attachment/");
+    }
+    
+    return url;
   } catch (error) {
     console.error("Cloudinary upload error:", error);
     return null;
@@ -181,6 +189,26 @@ const STOCK = [
     description:"Peugeot 2008 Pack Style, version sans AdBlue. Véhicule non-fumeur, toujours entretenu. Révision effectuée à 121 000 km, kit de distribution fait, contrôle technique OK. Idéal premier achat ou seconde voiture.",
     points:["Version sans AdBlue","Non-fumeur","Toujours entretenu","Révision faite à 121 000 km","Kit distribution fait","CT OK"],
     photos:["./photos/peugeot/1.png","./photos/peugeot/2.png","./photos/peugeot/3.png","./photos/peugeot/4.png","./photos/peugeot/5.jpeg"]
+  },
+  {
+    id:3,
+    marque:"Land Rover",
+    modele:"Discovery Sport 2.0 TD4 150 ch Hybride 7 places",
+    annee:2020,
+    mec:"2020",
+    km:135000,
+    prix:18990,
+    carb:"Diesel Hybride (MHEV)",
+    boite:"Automatique BVA9",
+    ch:150,
+    couleur:"Blanc",
+    portes:5,
+    type:"SUV 7 places",
+    cat:"vente",
+    badge:"7 places",
+    description:"Magnifique Land Rover Discovery Sport TD4 150 ch hybride léger (MHEV), configuration 7 places. Boîte automatique 9 rapports, idéale pour la famille et les longs trajets. Véhicule polyvalent, à la fois urbain et tout-terrain léger, parfait pour la Corse.",
+    points:["7 places modulables","Hybride léger (MHEV)","Boîte automatique 9 rapports","Idéal famille","Tout-terrain léger","Couleur blanche élégante"],
+    photos:["./photos/1.png","./photos/2.png","./photos/3.png","./photos/4.jpg","./photos/5.jpg","./photos/6.jpg","./photos/7.jpg"]
   },
 ];
 
