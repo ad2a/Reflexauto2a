@@ -212,6 +212,30 @@ const STOCK = [
   },
 ];
 
+// ═══ FLOTTE DE LOCATION ═══
+const LOCATIONS = [
+  {
+    id:"loc1",
+    marque:"Peugeot",
+    modele:"208 Like 1.0",
+    annee:2017,
+    carb:"Essence",
+    boite:"Manuelle",
+    places:5,
+    portes:5,
+    type:"Citadine",
+    couleur:"Rouge",
+    prixJour:40,
+    prixSemaine:240,
+    prixMois:750,
+    caution:800,
+    badge:"Économique",
+    description:"Idéale pour vos déplacements en ville et sur la côte corse. Économique et pratique.",
+    equipements:["Climatisation","Direction assistée","Bluetooth","Radio","ABS","Airbags"],
+    photos:["./photos/loc-208-1.png","./photos/loc-208-2.png","./photos/loc-208-3.png","./photos/loc-208-4.png","./photos/loc-208-5.png"]
+  },
+];
+
 function Logo({ size = 44 }) {
   return (
     <div style={{ display:"flex", alignItems:"center", gap:12, cursor:"pointer" }}>
@@ -777,27 +801,45 @@ function RachatPage() {
               </div>
 
               <div>
-                <label style={lbl}>Photos du véhicule (optionnel)</label>
-                <div style={{ border:`2px dashed ${C.border}`, borderRadius:12, padding:24, textAlign:"center", color:C.muted, fontSize:14, cursor:"pointer" }}
-                  onClick={() => document.getElementById("photo-input").click()}>
-                  <div style={{ fontSize:32, marginBottom:8 }}>📸</div>
-                  <div>Cliquez pour ajouter des photos</div>
-                  <div style={{ fontSize:12, marginTop:4 }}>JPG, PNG — extérieur, intérieur, compteur (plusieurs à la fois)</div>
-                  <input id="photo-input" type="file" multiple accept="image/*" style={{ display:"none" }}
-                    onChange={e => { handleImgsAdd(e.target.files); e.target.value = ""; }} />
+                <label style={lbl}>📸 Photos du véhicule (optionnel mais recommandé)</label>
+                <div style={{ border:`2px dashed ${C.gold}50`, borderRadius:12, padding:32, textAlign:"center", cursor:"pointer", background:C.surface, transition:"all .2s" }}
+                  onClick={() => document.getElementById("photo-input-rachat").click()}>
+                  <div style={{ fontSize:40, marginBottom:10 }}>📸</div>
+                  <div style={{ color:C.text, fontWeight:700, marginBottom:4 }}>Cliquez pour ajouter des photos</div>
+                  <div style={{ color:C.muted, fontSize:13 }}>Vous pouvez sélectionner plusieurs photos à la fois</div>
+                  <div style={{ color:C.muted, fontSize:12, marginTop:4 }}>Extérieur, intérieur, compteur, intérêts visibles…</div>
+                  <input id="photo-input-rachat" type="file" multiple accept="image/*" style={{ display:"none" }}
+                    onChange={e => { 
+                      if (e.target.files && e.target.files.length > 0) {
+                        handleImgsAdd(e.target.files); 
+                      }
+                      e.target.value = ""; 
+                    }} />
                 </div>
                 {imgs.length>0 && (
-                  <div style={{ marginTop:8, background:C.surface, borderRadius:10, padding:12 }}>
-                    <div style={{ color:C.green, fontWeight:700, fontSize:13, marginBottom:8, display:"flex", justifyContent:"space-between" }}>
-                      <span>✅ {imgs.length} photo{imgs.length>1?"s":""}</span>
-                      <button onClick={() => setImgs([])} style={{ background:"transparent", color:C.red, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12 }}>Tout retirer</button>
+                  <div style={{ marginTop:12, background:C.surface, borderRadius:10, padding:14 }}>
+                    <div style={{ color:C.green, fontWeight:700, fontSize:13, marginBottom:10, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                      <span>✅ {imgs.length} photo{imgs.length>1?"s":""} sélectionnée{imgs.length>1?"s":""}</span>
+                      <button type="button" onClick={() => setImgs([])} style={{ background:"transparent", color:C.red, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600 }}>
+                        Tout retirer
+                      </button>
                     </div>
                     {imgs.map((f, i) => (
-                      <div key={i} style={{ color:C.muted, fontSize:12, padding:"4px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                      <div key={i} style={{ color:C.muted, fontSize:13, padding:"6px 0", display:"flex", justifyContent:"space-between", alignItems:"center", borderTop: i > 0 ? `1px solid ${C.border}` : "none" }}>
                         <span>📷 {f.name}</span>
-                        <button onClick={() => removeImg(i)} style={{ background:"transparent", color:C.red, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14 }}>✕</button>
+                        <div style={{ display:"flex", gap:12, alignItems:"center" }}>
+                          <span style={{color:C.text}}>{(f.size/1024).toFixed(0)} Ko</span>
+                          <button type="button" onClick={() => removeImg(i)} style={{ background:"transparent", color:C.red, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14 }} title="Retirer cette photo">
+                            ✕
+                          </button>
+                        </div>
                       </div>
                     ))}
+                    <div style={{ marginTop:10, paddingTop:10, borderTop:`1px solid ${C.border}` }}>
+                      <button type="button" onClick={() => document.getElementById("photo-input-rachat").click()} style={{ background:"transparent", color:C.gold, border:`1px dashed ${C.gold}`, borderRadius:8, padding:"8px 14px", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, width:"100%" }}>
+                        + Ajouter d'autres photos
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -875,7 +917,9 @@ function LocationPage() {
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
-  const [form, setForm] = useState({ nom:"", email:"", debut:"", fin:"", vehicule:"", message:"" });
+  const [selectedLoc, setSelectedLoc] = useState(null);
+  const [locPhotoIdx, setLocPhotoIdx] = useState(0);
+  const [form, setForm] = useState({ nom:"", email:"", tel:"", debut:"", fin:"", vehicule:"", message:"" });
   const set = (k,v) => setForm(f=>({...f,[k]:v}));
   const inp = { width:"100%", background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 16px", color:C.text, fontSize:15, fontFamily:"inherit", boxSizing:"border-box", outline:"none" };
   const lbl = { display:"block", color:C.muted, fontSize:12, marginBottom:6, fontWeight:700, letterSpacing:0.5, textTransform:"uppercase" };
@@ -891,6 +935,17 @@ function LocationPage() {
     } else {
       setError("Une erreur est survenue. Merci de nous contacter directement à Reflexauto2a@gmail.com");
     }
+  };
+
+  const handleBookVehicle = (loc) => {
+    setSelectedLoc(loc);
+    setLocPhotoIdx(0);
+    set("vehicule", `${loc.marque} ${loc.modele}`);
+    // Scroll to form smoothly
+    setTimeout(() => {
+      const el = document.getElementById("location-form");
+      if (el) el.scrollIntoView({ behavior:"smooth", block:"start" });
+    }, 100);
   };
 
   return (
@@ -910,6 +965,112 @@ function LocationPage() {
           </div>
         ))}
       </div>
+
+      {/* ═══ CATALOGUE FLOTTE DE LOCATION ═══ */}
+      {LOCATIONS.length > 0 && (
+        <div style={{ marginBottom:60 }}>
+          <div style={{ textAlign:"center", marginBottom:36 }}>
+            <div style={{ fontSize:11, letterSpacing:4, color:C.gold, textTransform:"uppercase", marginBottom:10 }}>— Notre Flotte —</div>
+            <h2 style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:"clamp(26px,4vw,38px)", color:C.text, margin:"0 0 8px" }}>Véhicules disponibles</h2>
+            <p style={{ color:C.muted, fontSize:14, margin:0 }}>Réservez en quelques clics, devis sous 24h</p>
+          </div>
+
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(340px,1fr))", gap:24 }}>
+            {LOCATIONS.map(loc => (
+              <div key={loc.id} style={{ background:C.card, borderRadius:18, border:`1px solid ${C.border}`, overflow:"hidden", display:"flex", flexDirection:"column", transition:"transform .2s, border-color .2s" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = C.gold+"80"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; }}>
+                
+                {/* Photo */}
+                <div style={{ position:"relative", paddingBottom:"60%", background:C.surface, overflow:"hidden" }}>
+                  <img src={loc.photos[0]} alt={`${loc.marque} ${loc.modele}`}
+                    style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} />
+                  {loc.badge && (
+                    <div style={{ position:"absolute", top:14, left:14, background:C.gold, color:C.bg, padding:"6px 12px", borderRadius:20, fontSize:11, fontWeight:800, letterSpacing:0.5, textTransform:"uppercase" }}>
+                      {loc.badge}
+                    </div>
+                  )}
+                  <div style={{ position:"absolute", top:14, right:14, background:"rgba(13,13,13,0.85)", backdropFilter:"blur(8px)", padding:"6px 12px", borderRadius:20, fontSize:11, color:C.gold, fontWeight:700 }}>
+                    📷 {loc.photos.length} photos
+                  </div>
+                </div>
+
+                {/* Infos */}
+                <div style={{ padding:22, display:"flex", flexDirection:"column", gap:14, flex:1 }}>
+                  <div>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:4 }}>
+                      <h3 style={{ fontFamily:"'Cormorant Garamond', serif", color:C.text, fontSize:24, margin:0, fontWeight:700 }}>
+                        {loc.marque} {loc.modele}
+                      </h3>
+                      <div style={{ fontSize:11, color:C.muted }}>{loc.annee}</div>
+                    </div>
+                    <div style={{ color:C.muted, fontSize:13 }}>{loc.description}</div>
+                  </div>
+
+                  {/* Specs en grille */}
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, padding:"12px 0", borderTop:`1px solid ${C.border}`, borderBottom:`1px solid ${C.border}` }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, color:C.text }}>
+                      <span style={{ color:C.gold }}>⚙</span> {loc.boite}
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, color:C.text }}>
+                      <span style={{ color:C.gold }}>⛽</span> {loc.carb}
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, color:C.text }}>
+                      <span style={{ color:C.gold }}>👥</span> {loc.places} places
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, color:C.text }}>
+                      <span style={{ color:C.gold }}>🚪</span> {loc.portes} portes
+                    </div>
+                  </div>
+
+                  {/* Tarifs */}
+                  <div style={{ background:C.surface, borderRadius:10, padding:14 }}>
+                    <div style={{ fontSize:10, color:C.muted, textTransform:"uppercase", letterSpacing:1, marginBottom:8, fontWeight:700 }}>Tarifs TTC</div>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+                      <div style={{ textAlign:"center" }}>
+                        <div style={{ fontSize:18, fontWeight:800, color:C.gold, fontFamily:"'Cormorant Garamond', serif" }}>{loc.prixJour}€</div>
+                        <div style={{ fontSize:10, color:C.muted, textTransform:"uppercase" }}>/ jour</div>
+                      </div>
+                      <div style={{ textAlign:"center", borderLeft:`1px solid ${C.border}`, borderRight:`1px solid ${C.border}` }}>
+                        <div style={{ fontSize:18, fontWeight:800, color:C.gold, fontFamily:"'Cormorant Garamond', serif" }}>{loc.prixSemaine}€</div>
+                        <div style={{ fontSize:10, color:C.muted, textTransform:"uppercase" }}>/ semaine</div>
+                      </div>
+                      <div style={{ textAlign:"center" }}>
+                        <div style={{ fontSize:18, fontWeight:800, color:C.gold, fontFamily:"'Cormorant Garamond', serif" }}>{loc.prixMois}€</div>
+                        <div style={{ fontSize:10, color:C.muted, textTransform:"uppercase" }}>/ mois</div>
+                      </div>
+                    </div>
+                    <div style={{ marginTop:10, paddingTop:10, borderTop:`1px solid ${C.border}`, fontSize:11, color:C.muted, textAlign:"center" }}>
+                      Caution : <strong style={{ color:C.text }}>{loc.caution}€</strong>
+                    </div>
+                  </div>
+
+                  {/* Équipements */}
+                  {loc.equipements && loc.equipements.length > 0 && (
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                      {loc.equipements.slice(0,4).map((eq, i) => (
+                        <span key={i} style={{ background:C.surface, color:C.muted, padding:"4px 10px", borderRadius:12, fontSize:11, border:`1px solid ${C.border}` }}>
+                          ✓ {eq}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Bouton */}
+                  <button onClick={() => handleBookVehicle(loc)} style={{
+                    marginTop:"auto", background:C.gold, color:C.bg, border:"none", borderRadius:12, padding:14,
+                    fontWeight:800, fontSize:14, cursor:"pointer", fontFamily:"inherit", letterSpacing:0.5
+                  }}>
+                    Réserver ce véhicule →
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div id="location-form"></div>
 
       {!sent ? (
         <div style={{ background:C.card, borderRadius:20, padding:32, border:`1px solid ${C.border}` }}>
